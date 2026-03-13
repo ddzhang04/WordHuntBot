@@ -1,0 +1,6 @@
+torch
+opencv-python
+pyobjc-framework-Quartz
+pyobjc
+Pillow
+numpy

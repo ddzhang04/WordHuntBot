@@ -1,0 +1,6 @@
+__pycache__/
+venv/
+node_modules/
+dataset/
+model.pth
+.DS_Store
