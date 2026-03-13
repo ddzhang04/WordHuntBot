@@ -315,9 +315,9 @@ def find_enter_button(
     row_left = min(tile_xs)
     row_right = max(x + w for x, w in zip(tile_xs, tile_ws))
 
-    # Center x of the tile row, roughly 2 tile heights above the top of tiles
+    # ENTER button is ~3.5 tile heights above the letter tiles
     img_cx = (row_left + row_right) / 2
-    img_cy = row_top - avg_h * 2.0
+    img_cy = row_top - avg_h * 3.5
 
     cx = int(img_cx / scale + ox)
     cy = int(img_cy / scale + oy)

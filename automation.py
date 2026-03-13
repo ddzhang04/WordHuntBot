@@ -1,8 +1,18 @@
 """Mouse swipe automation using macOS Quartz CGEvent API."""
 
+import subprocess
 import time
 
 import Quartz
+
+
+def focus_iphone_mirroring():
+    """Bring iPhone Mirroring window to front."""
+    subprocess.run([
+        "osascript", "-e",
+        'tell application "iPhone Mirroring" to activate',
+    ], capture_output=True)
+    time.sleep(0.5)
 
 
 def _move_mouse(x: int, y: int, mouse_down: bool = False):
@@ -86,6 +96,7 @@ def play_words(
     delay: seconds between words
     max_words: maximum number of words to play (None = all)
     """
+    focus_iphone_mirroring()
     words = words_with_paths[:max_words] if max_words else words_with_paths
 
     for i, (word, points, path) in enumerate(words):
@@ -118,6 +129,7 @@ def play_anagram_words(
     delay: seconds between words
     max_words: maximum number of words to play (None = all)
     """
+    focus_iphone_mirroring()
     words = words_with_indices[:max_words] if max_words else words_with_indices
 
     for i, (word, points, indices) in enumerate(words):

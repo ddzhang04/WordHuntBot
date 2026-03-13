@@ -159,6 +159,37 @@ body {
   background: #243a28;
 }
 
+.cell.editable, .anagram-cell.editable {
+  cursor: text;
+}
+
+.card-hint {
+  float: right;
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #333;
+}
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: center;
+  text-transform: uppercase;
+  caret-color: #4ade80;
+}
+
+.anagram-mode .cell-input {
+  caret-color: #c084fc;
+}
+
 .anagram-mode .cell {
   background: #231a35;
 }

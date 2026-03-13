@@ -5,6 +5,7 @@ import os
 import threading
 
 import webview
+from pynput import keyboard
 
 from capture import (
     capture_screen, find_board, extract_cells, cell_centers,
@@ -110,6 +111,36 @@ class Api:
             "total_points": total_pts,
         })
 
+    def solve_wordhunt(self, grid_json):
+        grid = json.loads(grid_json)
+        self.status = "solving..."
+        board = Board(grid, self.trie)
+        self._results = board.solve()
+        total_pts = sum(p for _, p, _ in self._results)
+        self.status = f"found {len(self._results)} words ({total_pts} pts)"
+        return json.dumps({
+            "results": [
+                {"word": w, "points": p, "path": path}
+                for w, p, path in self._results
+            ],
+            "total_points": total_pts,
+        })
+
+    def solve_anagram(self, letters_json):
+        letters = json.loads(letters_json)
+        self.status = "solving anagram..."
+        solver = AnagramSolver(letters, self.trie)
+        self._results = solver.solve()
+        total_pts = sum(p for _, p, _ in self._results)
+        self.status = f"found {len(self._results)} words ({total_pts} pts)"
+        return json.dumps({
+            "results": [
+                {"word": w, "points": p, "indices": indices}
+                for w, p, indices in self._results
+            ],
+            "total_points": total_pts,
+        })
+
     def play_wordhunt(self, delay, max_words):
         if not self._results or not self._centers:
             return json.dumps({"error": "No results"})
@@ -154,6 +185,15 @@ class Api:
 
 def main():
     api = Api()
+
+    # Global hotkey: Escape to stop playback
+    def on_press(key):
+        if key == keyboard.Key.esc:
+            api.playing = False
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.daemon = True
+    listener.start()
 
     # Use built React app if available, otherwise dev server
     build_dir = os.path.join(os.path.dirname(__file__), "frontend", "dist")
