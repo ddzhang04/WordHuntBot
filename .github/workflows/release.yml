@@ -1,0 +1,63 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pywebview pynput pyinstaller
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Bundle with PyInstaller
+        run: |
+          pyinstaller --name "WordHuntBot" \
+            --windowed \
+            --onedir \
+            --add-data "dictionary.txt:." \
+            --add-data "model.pth:." \
+            --add-data "frontend/dist:frontend/dist" \
+            --hidden-import webview \
+            --hidden-import pynput \
+            --hidden-import pynput.keyboard \
+            --hidden-import pynput.keyboard._darwin \
+            app.py
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "WordHuntBot" \
+            -srcfolder dist/WordHuntBot.app \
+            -ov -format UDZO \
+            WordHuntBot-${{ github.ref_name }}.dmg
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WordHuntBot-${{ github.ref_name }}.dmg
+          generate_release_notes: true
