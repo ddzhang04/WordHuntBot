@@ -1,5 +1,10 @@
 # WordHuntBot
 
+![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)
+![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-orange)
+![macOS Sonoma 15.0+](https://img.shields.io/badge/macOS-Sonoma%2015.0%2B-lightgrey)
+![License MIT](https://img.shields.io/badge/License-MIT-green)
+
 A GamePigeon automation bot for **Word Hunt** and **Anagrams**. Captures the game board from iPhone Mirroring, recognizes letters with a CNN, solves for all valid words, and automatically plays them via mouse simulation.
 
 ## How It Works
