@@ -115,3 +115,46 @@ class Board:
                 self._dfs(nr, nc, next_node, path, results)
 
         path.pop()
+
+
+class AnagramSolver:
+    """Find all valid words from a set of letters (each used at most once)."""
+
+    def __init__(self, letters: list[str], trie: Trie):
+        self.letters = [ch.lower() for ch in letters]
+        self.trie = trie
+
+    def solve(self) -> list[tuple[str, int, list[int]]]:
+        """Return list of (word, points, letter_indices) sorted by length desc."""
+        results: dict[str, list[int]] = {}
+        self._dfs(self.trie.root, [], [False] * len(self.letters), results)
+
+        scored = []
+        for word, indices in results.items():
+            pts = word_points(len(word))
+            scored.append((word, pts, indices))
+        scored.sort(key=lambda x: (-x[1], x[0]))
+        return scored
+
+    def _dfs(
+        self,
+        node: TrieNode,
+        indices: list[int],
+        used: list[bool],
+        results: dict[str, list[int]],
+    ) -> None:
+        if node.is_word and len(indices) >= 3:
+            word = "".join(self.letters[i] for i in indices)
+            if word not in results or len(indices) > len(results[word]):
+                results[word] = list(indices)
+
+        for i, ch in enumerate(self.letters):
+            if used[i]:
+                continue
+            if ch not in node.children:
+                continue
+            used[i] = True
+            indices.append(i)
+            self._dfs(node.children[ch], indices, used, results)
+            indices.pop()
+            used[i] = False

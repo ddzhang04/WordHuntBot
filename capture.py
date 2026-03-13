@@ -1,4 +1,4 @@
-"""Screen capture and Word Hunt board detection via iPhone Mirroring."""
+"""Screen capture and game board detection via iPhone Mirroring."""
 
 from dataclasses import dataclass
 
@@ -187,3 +187,138 @@ def cell_centers(
             cy = int(sy + row * cell_h + cell_h / 2)
             centers.append((cx, cy))
     return centers
+
+
+def _get_retina_scale(shot: Screenshot) -> float:
+    """Get the Retina scale factor for the iPhone Mirroring window."""
+    img_h, img_w = shot.image.shape[:2]
+    win_w = img_w
+    window_list = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID
+    )
+    for win in window_list:
+        owner = win.get("kCGWindowOwnerName", "")
+        name = win.get("kCGWindowName", "")
+        if "iPhone Mirroring" in owner or "iPhone Mirroring" in name:
+            win_w = int(win["kCGWindowBounds"]["Width"])
+            break
+    return img_w / win_w if win_w > 0 else 1.0
+
+
+def find_anagram_tiles(shot: Screenshot) -> list[tuple[int, int, int, int]] | None:
+    """Detect the 6 anagram letter tiles (tan tiles in a horizontal row).
+
+    Returns list of 6 (x, y, w, h) rects in image coordinates sorted left-to-right,
+    or None if not found.
+    """
+    hsv = cv2.cvtColor(shot.image, cv2.COLOR_BGR2HSV)
+
+    # Tan/beige wood tile color range (same as Word Hunt)
+    lower_tan = np.array([15, 30, 150])
+    upper_tan = np.array([35, 180, 255])
+    mask = cv2.inRange(hsv, lower_tan, upper_tan)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+
+    img_area = shot.image.shape[0] * shot.image.shape[1]
+    tiles = []
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        area = w * h
+        aspect = w / h if h > 0 else 0
+        if 0.6 < aspect < 1.7 and 500 < area < img_area * 0.05:
+            tiles.append((x, y, w, h))
+
+    # Anagrams has 6 tiles in a row — filter to tiles at roughly the same y
+    if len(tiles) < 6:
+        return None
+
+    # Sort by y to find the row of tiles (they should all be near the bottom)
+    tiles.sort(key=lambda t: t[1])
+
+    # Group tiles by similar y coordinate (within one tile height)
+    if tiles:
+        avg_h = sum(h for _, _, _, h in tiles) / len(tiles)
+        rows: dict[int, list] = {}
+        for t in tiles:
+            placed = False
+            for key in rows:
+                if abs(t[1] - key) < avg_h * 0.5:
+                    rows[key].append(t)
+                    placed = True
+                    break
+            if not placed:
+                rows[t[1]] = [t]
+
+        # Find a row with exactly 6 tiles
+        for key in sorted(rows.keys(), reverse=True):  # prefer bottom row
+            if len(rows[key]) == 6:
+                row_tiles = sorted(rows[key], key=lambda t: t[0])  # left to right
+                return row_tiles
+
+    return None
+
+
+def extract_anagram_cells(
+    shot: Screenshot, tiles: list[tuple[int, int, int, int]]
+) -> list[np.ndarray]:
+    """Extract cell images from detected anagram tiles."""
+    cells = []
+    for x, y, w, h in tiles:
+        margin_x = int(w * 0.1)
+        margin_y = int(h * 0.1)
+        cell = shot.image[y + margin_y : y + h - margin_y, x + margin_x : x + w - margin_x]
+        cells.append(cell)
+    return cells
+
+
+def anagram_tile_centers(
+    tiles: list[tuple[int, int, int, int]], shot: Screenshot
+) -> list[tuple[int, int]]:
+    """Compute screen coordinates for the center of each anagram tile."""
+    ox, oy = shot.window_origin
+    scale = _get_retina_scale(shot)
+
+    centers = []
+    for x, y, w, h in tiles:
+        cx = int(x / scale + w / scale / 2 + ox)
+        cy = int(y / scale + h / scale / 2 + oy)
+        centers.append((cx, cy))
+    return centers
+
+
+def find_enter_button(
+    tiles: list[tuple[int, int, int, int]], shot: Screenshot
+) -> tuple[int, int]:
+    """Compute the ENTER button position relative to detected anagram tiles.
+
+    The ENTER button sits directly above the row of letter tiles.
+    Returns (x, y) screen coordinates of the button center.
+    """
+    ox, oy = shot.window_origin
+    scale = _get_retina_scale(shot)
+
+    # ENTER button is centered horizontally, one tile-height above the tiles
+    tile_ys = [t[1] for t in tiles]
+    tile_xs = [t[0] for t in tiles]
+    tile_ws = [t[2] for t in tiles]
+    tile_hs = [t[3] for t in tiles]
+
+    avg_h = sum(tile_hs) / len(tile_hs)
+    row_top = min(tile_ys)
+    row_left = min(tile_xs)
+    row_right = max(x + w for x, w in zip(tile_xs, tile_ws))
+
+    # Center x of the tile row, roughly 2 tile heights above the top of tiles
+    img_cx = (row_left + row_right) / 2
+    img_cy = row_top - avg_h * 2.0
+
+    cx = int(img_cx / scale + ox)
+    cy = int(img_cy / scale + oy)
+    return (cx, cy)

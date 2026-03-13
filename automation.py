@@ -94,3 +94,42 @@ def play_words(
 
         # Yield progress info
         yield i + 1, len(words), word, points
+
+
+def _click(x: int, y: int):
+    """Click at (x, y)."""
+    _mouse_down(x, y)
+    time.sleep(0.02)
+    _mouse_up(x, y)
+
+
+def play_anagram_words(
+    words_with_indices: list[tuple[str, int, list[int]]],
+    tile_centers: list[tuple[int, int]],
+    enter_pos: tuple[int, int],
+    delay: float = 0.3,
+    max_words: int | None = None,
+):
+    """Play anagram words by tapping tiles then ENTER.
+
+    words_with_indices: output from AnagramSolver.solve() — list of (word, points, indices)
+    tile_centers: 6 (x, y) screen coordinates for each tile
+    enter_pos: (x, y) screen coordinates of the ENTER button
+    delay: seconds between words
+    max_words: maximum number of words to play (None = all)
+    """
+    words = words_with_indices[:max_words] if max_words else words_with_indices
+
+    for i, (word, points, indices) in enumerate(words):
+        # Tap each letter tile in order
+        for idx in indices:
+            tx, ty = tile_centers[idx]
+            _click(tx, ty)
+            time.sleep(0.05)
+
+        # Tap ENTER
+        time.sleep(0.05)
+        _click(enter_pos[0], enter_pos[1])
+        time.sleep(delay)
+
+        yield i + 1, len(words), word, points
