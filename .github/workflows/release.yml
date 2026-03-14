@@ -37,11 +37,15 @@ jobs:
 
       - name: Bundle with PyInstaller
         run: |
+          EXTRA_DATA=""
+          if [ -f model.pth ]; then
+            EXTRA_DATA="--add-data model.pth:."
+          fi
           pyinstaller --name "WordHuntBot" \
             --windowed \
             --onedir \
             --add-data "dictionary.txt:." \
-            --add-data "model.pth:." \
+            $EXTRA_DATA \
             --add-data "frontend/dist:frontend/dist" \
             --hidden-import webview \
             --hidden-import pynput \
